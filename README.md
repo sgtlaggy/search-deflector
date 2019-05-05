@@ -55,6 +55,7 @@ Get it at the Microsoft Store [here](https://www.microsoft.com/store/productId/9
 | ---- | ---- |
 | Homepage | https://spikespaz.com/search-deflector                                    |
 | MS Store | https://www.microsoft.com/store/productId/9P8ZJJ80RZ2K                    |
+| Donate   | https://spikespaz.com/donate                                              |
 | Wiki     | https://github.com/spikespaz/search-deflector/wiki                        |
 | Issues   | https://github.com/spikespaz/search-deflector/issues                      |
 | License  | https://github.com/spikespaz/search-deflector/blob/master/LICENSE         |
