@@ -4,6 +4,7 @@ import common: DeflectorSettings, parseConfig, readSettings, writeSettings, crea
     getConsoleArgs, mergeAAs, PROJECT_VERSION, ENGINE_TEMPLATES;
 import std.windows.registry: Registry, Key, RegistryException;
 import std.string: strip, split, indexOf, toLower;
+import core.sys.windows.windows: SetConsoleTitle;
 import std.socket: SocketException, getAddress;
 import std.regex: Regex, regex, matchFirst;
 import std.stdio: write, writeln, readln;
@@ -16,7 +17,7 @@ import std.utf: toUTF16z;
 import std.range: array;
 
 void main() {
-    writeln("Version: " ~ PROJECT_VERSION);
+    SetConsoleTitle("Search Deflector ~ Version: " ~ PROJECT_VERSION ~ " ~ Configure");
 
     try {
         string[string] browsers = getAvailableBrowsers(false);

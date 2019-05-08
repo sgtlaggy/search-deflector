@@ -1,6 +1,7 @@
 module updater;
 
 import common: SETUP_FILENAME, PROJECT_AUTHOR, PROJECT_NAME, PROJECT_VERSION;
+import core.sys.windows.windows: SetConsoleTitle;
 import std.json: JSONValue, JSONType, parseJSON;
 import std.path: buildNormalizedPath, dirName;
 import std.process: Config, spawnShell;
@@ -25,7 +26,7 @@ import std.conv: to;
 */
 
 void main() {
-    writeln("Search Deflector " ~ PROJECT_VERSION);
+    SetConsoleTitle("Search Deflector ~ Version: " ~ PROJECT_VERSION ~ " ~ Update");
 
     const JSONValue releaseJson = getLatestRelease(PROJECT_AUTHOR, PROJECT_NAME);
     const JSONValue releaseAsset = getReleaseAsset(releaseJson, SETUP_FILENAME);
