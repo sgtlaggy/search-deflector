@@ -1,7 +1,7 @@
 module setup;
 
-import common: DeflectorSettings, parseConfig, readSettings, writeSettings, createErrorDialog,
-    getConsoleArgs, mergeAAs, PROJECT_VERSION, ENGINE_TEMPLATES;
+import common: DeflectorSettings, parseConfig, createErrorDialog, getConsoleArgs, mergeAAs,
+    PROJECT_VERSION, ENGINE_TEMPLATES;
 import std.windows.registry: Registry, Key, RegistryException;
 import std.string: strip, split, indexOf, toLower;
 import core.sys.windows.windows: SetConsoleTitle;
@@ -29,9 +29,11 @@ void main() {
 
         const string[string] engines = parseConfig(ENGINE_TEMPLATES);
 
-        DeflectorSettings settings = promptSettings(browsers, engines);
+        DeflectorSettings settings = new DeflectorSettings();
 
-        writeSettings(settings);
+        promptSettings(settings, browsers, engines);
+
+        settings.write();
     } catch (Exception error) {
         createErrorDialog(error);
     }
@@ -41,7 +43,7 @@ void main() {
 }
 
 /// Function to run when setting up the deflector.
-DeflectorSettings promptSettings(const string[string] browsers, const string[string] engines) {
+void promptSettings(DeflectorSettings settings, const string[string] browsers, const string[string] engines) {
     // dfmt off
     writeln("Welcome to the Search Deflector setup.\n",
             "Just answer the prompts in this terminal to set your preferences, and you should be good to go.\n",
@@ -49,8 +51,6 @@ DeflectorSettings promptSettings(const string[string] browsers, const string[str
             "or create an Issue on the GitHub repository (https://github.com/spikespaz/search-deflector/issues).\n\n",
             "Don't forget to star the repository on GitHub so people see it!\n");
     // dfmt on
-
-    DeflectorSettings settings = readSettings();
 
     const string browserName = promptBrowserChoice(browsers);
 
@@ -81,8 +81,6 @@ DeflectorSettings promptSettings(const string[string] browsers, const string[str
             "\nSearch Engine: \"", settings.engineURL, "\"",
             "\nBrowser: \"", settings.browserPath, "\"");
     // dfmt on
-
-    return settings;
 }
 
 /// Fetch a list of available browsers from the Windows registry along with their paths.
