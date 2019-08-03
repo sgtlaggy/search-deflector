@@ -4,88 +4,118 @@ import std.conv: to;
 import std.stdio: writeln;
 import std.string: toStringz;
 import std.utf: toUTF16z, toUTF8;
+import std.windows.registry: RegistryException;
+import setup: getAvailableBrowsers;
+import common: parseConfig, mergeAAs, createErrorDialog, ENGINE_TEMPLATES, PROJECT_VERSION;
 
-extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-        LPSTR lpCmdLine, int nCmdShow) {
-    int result;
+/// Entry point for SUBSYSTEM:WINDOWS
+extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @suppress(dscanner.style.phobos_naming_convention)
+    ConfigWindow window;
 
     try {
         Runtime.initialize();
 
-        result = windowMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+        window = ConfigWindow(hInstance);
+        window.begin();
 
         Runtime.terminate();
-    } catch (Throwable e) {
-        MessageBoxA(null, e.toString().toStringz(), null, MB_ICONEXCLAMATION);
-
-        result = 0;
+    } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
+        createErrorDialog(error);
     }
 
-    return result;
+    return !window.success;
 }
 
-extern (Windows) LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) nothrow {
-    switch (msg) {
-    case WM_DESTROY:
-        PostQuitMessage(0);
+/// Structure for creating and managing a configuration window along with
+/// updating the regustry according to the Windows API messaging system.
+struct ConfigWindow {
+    /// Documents the success of all things done by this object.
+    /// This bit is flipped when a nothrow function has a problem,
+    /// it is also the exit message for the program.
+    bool success = true;
 
-        break;
+    string className = "com.spikespaz.searchdeflector";
+    string wndName = "Search Deflector";
+    int wndWidth = 500;
+    int wndHeight = 500;
 
-    default:
-        break;
+    MSG message;
+    HWND hWnd;
+
+    string[string] browsers;
+    string[string] engines;
+
+    /// Constructor for ConfigWindow, takes HINSTANCE from WinMain.
+    this(HINSTANCE hInstance) {
+        // dfmt off
+        WNDCLASSW wc = {
+            style: CS_HREDRAW | CS_VREDRAW,
+            lpfnWndProc: (&this.wndProc).funcptr,
+            cbClsExtra: 0,
+            cbWndExtra: 0,
+            hInstance: hInstance,
+            hIcon: LoadIcon(NULL, IDI_APPLICATION),
+            hCursor: LoadCursor(NULL, IDC_ARROW),
+            hbrBackground: GetSysColorBrush(COLOR_3DFACE),
+            lpszMenuName: null,
+            lpszClassName: this.className.toUTF16z
+        };
+        // dfmt on
+
+        RegisterClassW(&wc);
+
+        this.hWnd = CreateWindowW(this.className.toUTF16z, this.wndName.toUTF16z,
+                WS_OVERLAPPEDWINDOW, 0, 0, this.wndWidth, this.wndHeight, null,
+                null, hInstance, null);
+
+        if (!centerWindow(this.hWnd))
+            this.success = false;
     }
 
-    return DefWindowProcW(hwnd, msg, wParam, lParam);
-}
+    /// Function to start the main window message loop.
+    void begin() {
+        this.browsers = getAvailableBrowsers(false);
+        this.engines = parseConfig(ENGINE_TEMPLATES);
+        
+        try {
+            this.browsers = mergeAAs(browsers, getAvailableBrowsers(true));
+        } catch (RegistryException) {
+            assert(0);
+        } // Just ignore if no browsers in HKCU
 
-/// Entry point for this program, Search Deflector's config GUI.
-int windowMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
-    int result;
+        ShowWindow(this.hWnd, SW_SHOWNORMAL);
 
-    MSG msg;
-    HWND hwnd;
-    WNDCLASSW wc = {
-        style: CS_HREDRAW | CS_VREDRAW,
-        lpfnWndProc: &WndProc,
-        cbClsExtra: 0,
-        cbWndExtra: 0,
-        hInstance: hInstance,
-        hIcon: LoadIcon(NULL, IDI_APPLICATION),
-        hCursor: LoadCursor(NULL, IDC_ARROW),
-        hbrBackground: GetSysColorBrush(COLOR_3DFACE),
-        lpszMenuName: null,
-        lpszClassName: "com.spikespaz.searchdeflector".toUTF16z()
-    };
-
-    RegisterClassW(&wc);
-
-    LPCTSTR lpWindowName = "Search Deflector Configuration".toUTF16z();
-    DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
-
-    // Below is my hacky way of hiding the window before the SetWindowPos is used for centering on the monitor.
-    const int wndWidth = 500;
-    const int wndHeight = 500;
-
-    HWND hWndParent = null;
-    HMENU hMenu = null;
-    LPVOID lpParam = null;
-
-    hwnd = CreateWindowW(wc.lpszClassName, lpWindowName, dwStyle, -1_000_000,
-            -1_000_000, wndWidth, wndHeight, hWndParent, hMenu, hInstance, lpParam);
-
-    result = centerWindow(hwnd);
-    if (!result)
-        return result;
-
-    result = UpdateWindow(hwnd);
-    if (!result)
-        return result;
-
-    while (GetMessage(&msg, null, 0, 0)) {
-        DispatchMessage(&msg);
+        while (GetMessage(&message, null, 0, 0)) {
+            TranslateMessage(&message);
+            DispatchMessage(&message);
+        }
     }
 
-    return msg.wParam.to!int;
+    /// This window's procedure callback.
+    extern(Windows) LRESULT wndProc(HWND, uint message, WPARAM wParam, LPARAM lParam) nothrow {
+        switch (message) {
+        case WM_CREATE:
+            try {
+                this.drawWindow();
+            } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
+                createErrorDialog(error);
+
+                this.success = false;
+            }
+            break;
+        case WM_DESTROY:
+            PostQuitMessage(!this.success);
+            break;
+        default:
+            break;
+        }
+
+        return DefWindowProcW(hWnd, message, wParam, lParam);
+    }
+
+    /// Draw the window controls.
+    void drawWindow() {
+    }
 }
 
 /// Takes a window handle as input and centers in the middle of the most appropriate monitor.
@@ -113,8 +143,7 @@ int centerWindow(HWND hwnd) {
     const int wndPosX = (lpmi.rcMonitor.left + lpmi.rcMonitor.right - wndWidth) / 2;
     const int wndPosY = (lpmi.rcMonitor.top + lpmi.rcMonitor.bottom - wndHeight) / 2;
 
-    result = SetWindowPos(hwnd, HWND_TOP, wndPosX, wndPosY, 0, 0,
-            SWP_NOREDRAW | SWP_NOSIZE | SWP_SHOWWINDOW);
+    result = SetWindowPos(hwnd, HWND_TOP, wndPosX, wndPosY, 0, 0, SWP_NOREDRAW | SWP_NOSIZE);
 
     return result;
 }
