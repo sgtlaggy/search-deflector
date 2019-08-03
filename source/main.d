@@ -8,10 +8,11 @@ import std.windows.registry: RegistryException;
 import setup: getAvailableBrowsers;
 import common: parseConfig, mergeAAs, createErrorDialog, ENGINE_TEMPLATES, PROJECT_VERSION;
 
+/// Global variable for the ConfigWindow instance, let's hope there's only one!
+ConfigWindow window;
+
 /// Entry point for SUBSYSTEM:WINDOWS
 extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @suppress(dscanner.style.phobos_naming_convention)
-    ConfigWindow window;
-
     try {
         Runtime.initialize();
 
@@ -50,7 +51,7 @@ struct ConfigWindow {
         // dfmt off
         WNDCLASSW wc = {
             style: CS_HREDRAW | CS_VREDRAW,
-            lpfnWndProc: (&this.wndProc).funcptr,
+            lpfnWndProc: &this.wndProc,
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: hInstance,
@@ -92,19 +93,19 @@ struct ConfigWindow {
     }
 
     /// This window's procedure callback.
-    extern(Windows) LRESULT wndProc(HWND, uint message, WPARAM wParam, LPARAM lParam) nothrow {
+    extern(Windows) static LRESULT wndProc(HWND hWnd, uint message, WPARAM wParam, LPARAM lParam) nothrow {
         switch (message) {
         case WM_CREATE:
             try {
-                this.drawWindow();
+                window.drawWindow();
             } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
                 createErrorDialog(error);
 
-                this.success = false;
+                window.success = false;
             }
             break;
         case WM_DESTROY:
-            PostQuitMessage(!this.success);
+            PostQuitMessage(!window.success);
             break;
         default:
             break;
