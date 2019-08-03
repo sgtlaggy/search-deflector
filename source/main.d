@@ -8,11 +8,10 @@ import std.windows.registry: RegistryException;
 import setup: getAvailableBrowsers;
 import common: parseConfig, mergeAAs, createErrorDialog, ENGINE_TEMPLATES, PROJECT_VERSION;
 
-/// Global variable for the ConfigWindow instance, let's hope there's only one!
-ConfigWindow window;
-
 /// Entry point for SUBSYSTEM:WINDOWS
 extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @suppress(dscanner.style.phobos_naming_convention)
+    ConfigWindow window;
+    
     try {
         Runtime.initialize();
 
@@ -25,6 +24,20 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
     }
 
     return !window.success;
+}
+
+/// Global static window procedure to call the non-static methods in ConfigWindow instances.
+extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) nothrow {
+    try {
+        ConfigWindow* window = cast(ConfigWindow*) GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+        if (window)
+            window.windowProc(message, wParam, lParam);
+    } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
+        createErrorDialog(error);
+    }
+
+    return DefWindowProcW(hWnd, message, wParam, lParam);
 }
 
 /// Structure for creating and managing a configuration window along with
@@ -48,10 +61,12 @@ struct ConfigWindow {
 
     /// Constructor for ConfigWindow, takes HINSTANCE from WinMain.
     this(HINSTANCE hInstance) {
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR) &this);
+
         // dfmt off
         WNDCLASSW wc = {
             style: CS_HREDRAW | CS_VREDRAW,
-            lpfnWndProc: &this.wndProc,
+            lpfnWndProc: &globalWindowProc,
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: hInstance,
@@ -93,25 +108,23 @@ struct ConfigWindow {
     }
 
     /// This window's procedure callback.
-    extern(Windows) static LRESULT wndProc(HWND hWnd, uint message, WPARAM wParam, LPARAM lParam) nothrow {
+    void windowProc(uint message, WPARAM wParam, LPARAM lParam) {        
         switch (message) {
         case WM_CREATE:
             try {
-                window.drawWindow();
+                this.drawWindow();
             } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
                 createErrorDialog(error);
 
-                window.success = false;
+                this.success = false;
             }
             break;
         case WM_DESTROY:
-            PostQuitMessage(!window.success);
+            PostQuitMessage(!this.success);
             break;
         default:
             break;
         }
-
-        return DefWindowProcW(hWnd, message, wParam, lParam);
     }
 
     /// Draw the window controls.
