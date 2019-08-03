@@ -44,18 +44,18 @@ int windowMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
 
     MSG msg;
     HWND hwnd;
-    WNDCLASSW wc;
-
-    wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = &WndProc;
-    wc.cbClsExtra = 0;
-    wc.cbWndExtra = 0;
-    wc.hInstance = hInstance;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = GetSysColorBrush(COLOR_3DFACE);
-    wc.lpszMenuName = null;
-    wc.lpszClassName = "com.spikespaz.searchdeflector".toUTF16z();
+    WNDCLASSW wc = {
+        style: CS_HREDRAW | CS_VREDRAW,
+        lpfnWndProc: &WndProc,
+        cbClsExtra: 0,
+        cbWndExtra: 0,
+        hInstance: hInstance,
+        hIcon: LoadIcon(NULL, IDI_APPLICATION),
+        hCursor: LoadCursor(NULL, IDC_ARROW),
+        hbrBackground: GetSysColorBrush(COLOR_3DFACE),
+        lpszMenuName: null,
+        lpszClassName: "com.spikespaz.searchdeflector".toUTF16z()
+    };
 
     RegisterClassW(&wc);
 
@@ -71,7 +71,7 @@ int windowMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     LPVOID lpParam = null;
 
     hwnd = CreateWindowW(wc.lpszClassName, lpWindowName, dwStyle, -1_000_000,
-            -1_000_000, wndPosY, wndWidth, wndHeight, hWndParent, hMenu, hInstance, lpParam);
+            -1_000_000, wndWidth, wndHeight, hWndParent, hMenu, hInstance, lpParam);
 
     result = centerWindow(hwnd);
     if (!result)
