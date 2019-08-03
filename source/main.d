@@ -15,7 +15,7 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
     try {
         Runtime.initialize();
 
-        window = ConfigWindow(hInstance);
+        window = ConfigWindow(hInstance, "com.spikespaz.searchdeflector");
         window.begin();
 
         Runtime.terminate();
@@ -48,7 +48,7 @@ struct ConfigWindow {
     /// it is also the exit message for the program.
     bool success = true;
 
-    string className = "com.spikespaz.searchdeflector";
+    string className;
     string wndName = "Search Deflector";
     int wndWidth = 500;
     int wndHeight = 500;
@@ -60,8 +60,10 @@ struct ConfigWindow {
     string[string] engines;
 
     /// Constructor for ConfigWindow, takes HINSTANCE from WinMain.
-    this(HINSTANCE hInstance) {
+    this(HINSTANCE hInstance, string className) {
         SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR) &this);
+
+        this.className = className;
 
         // dfmt off
         WNDCLASSW wc = {
@@ -111,13 +113,7 @@ struct ConfigWindow {
     void windowProc(uint message, WPARAM wParam, LPARAM lParam) {        
         switch (message) {
         case WM_CREATE:
-            try {
-                this.drawWindow();
-            } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
-                createErrorDialog(error);
-
-                this.success = false;
-            }
+            this.drawWindow();
             break;
         case WM_DESTROY:
             PostQuitMessage(!this.success);
