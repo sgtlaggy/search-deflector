@@ -28,7 +28,9 @@ extern (Windows) LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
     switch (msg) {
     case WM_DESTROY:
         PostQuitMessage(0);
+
         break;
+
     default:
         break;
     }
@@ -36,7 +38,8 @@ extern (Windows) LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-int windowMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+/// Entry point for this program, Search Deflector's config GUI.
+int windowMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     int result;
 
     MSG msg;
@@ -44,15 +47,15 @@ int windowMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     WNDCLASSW wc;
 
     wc.style = CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc = &WndProc;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
-    wc.lpszClassName = "com.spikespaz.searchdeflector"w.toUTF16z();
     wc.hInstance = hInstance;
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = GetSysColorBrush(COLOR_3DFACE);
     wc.lpszMenuName = null;
-    wc.lpfnWndProc = &WndProc;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.lpszClassName = "com.spikespaz.searchdeflector".toUTF16z();
 
     RegisterClassW(&wc);
 
@@ -60,35 +63,17 @@ int windowMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
     // Below is my hacky way of hiding the window before the SetWindowPos is used for centering on the monitor.
-    int wndPosX = -1_000_000;
-    int wndPosY = -1_000_000;
-    int wndWidth = 500;
-    int wndHeight = 500;
+    const int wndWidth = 500;
+    const int wndHeight = 500;
+
     HWND hWndParent = null;
     HMENU hMenu = null;
     LPVOID lpParam = null;
 
-    hwnd = CreateWindowW(wc.lpszClassName, lpWindowName, dwStyle, wndPosX,
-            wndPosY, wndWidth, wndHeight, hWndParent, hMenu, hInstance, lpParam);
+    hwnd = CreateWindowW(wc.lpszClassName, lpWindowName, dwStyle, -1_000_000,
+            -1_000_000, wndPosY, wndWidth, wndHeight, hWndParent, hMenu, hInstance, lpParam);
 
-    HMONITOR monitor;
-    MONITORINFO lpmi;
-
-    lpmi.cbSize = MONITORINFO.sizeof;
-
-    monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    if (!monitor)
-        return 1;
-
-    result = GetMonitorInfo(monitor, &lpmi);
-    if (!result)
-        return result;
-
-    wndPosX = (lpmi.rcMonitor.left + lpmi.rcMonitor.right - wndWidth) / 2;
-    wndPosY = (lpmi.rcMonitor.top + lpmi.rcMonitor.bottom - wndHeight) / 2;
-
-    result = SetWindowPos(hwnd, HWND_TOP, wndPosX, wndPosY, 0, 0,
-            SWP_NOREDRAW | SWP_NOSIZE | SWP_SHOWWINDOW);
+    result = centerWindow(hwnd);
     if (!result)
         return result;
 
@@ -101,4 +86,35 @@ int windowMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     }
 
     return msg.wParam.to!int;
+}
+
+/// Takes a window handle as input and centers in the middle of the most appropriate monitor.
+int centerWindow(HWND hwnd) {
+    int result;
+
+    HMONITOR monitor;
+    MONITORINFO lpmi;
+    RECT wndRect;
+
+    result = GetWindowRect(hwnd, &wndRect);
+
+    lpmi.cbSize = MONITORINFO.sizeof;
+
+    monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (!monitor)
+        return 1;
+
+    result = GetMonitorInfo(monitor, &lpmi);
+    if (!result)
+        return result;
+
+    const int wndWidth = wndRect.right - wndRect.left;
+    const int wndHeight = wndRect.bottom - wndRect.top;
+    const int wndPosX = (lpmi.rcMonitor.left + lpmi.rcMonitor.right - wndWidth) / 2;
+    const int wndPosY = (lpmi.rcMonitor.top + lpmi.rcMonitor.bottom - wndHeight) / 2;
+
+    result = SetWindowPos(hwnd, HWND_TOP, wndPosX, wndPosY, 0, 0,
+            SWP_NOREDRAW | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+    return result;
 }
