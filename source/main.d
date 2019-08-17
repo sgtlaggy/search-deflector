@@ -1,5 +1,6 @@
 import core.runtime: Runtime;
 import core.sys.windows.windows;
+import std.exception: assumeWontThrow;
 import std.conv: to;
 import std.stdio: writeln;
 import std.string: toStringz;
@@ -11,8 +12,6 @@ import common: parseConfig, mergeAAs, createErrorDialog, ENGINE_TEMPLATES, PROJE
 int main(const string[] args) {
     HINSTANCE hInstance = cast(HINSTANCE) GetModuleHandle(null);
 
-    writeln("Started!");
-
     return WinMain(hInstance, null, GetCommandLineA(), 0);
 }
 
@@ -23,12 +22,18 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
     try {
         Runtime.initialize();
 
+        writeln("Initialized D runtime.");
+
         window = ConfigWindow(hInstance, "com.spikespaz.searchdeflector");
         window.begin();
 
         Runtime.terminate();
+
+        writeln("Terminated D runtime.");
     } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
         createErrorDialog(error);
+
+        writeln(error);
     }
 
     return !window.success;
@@ -36,6 +41,7 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
 
 /// Global static window procedure to call the non-static methods in ConfigWindow instances.
 extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) nothrow {
+    
     try {
         ConfigWindow* window = cast(ConfigWindow*) GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
@@ -43,6 +49,8 @@ extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam
             window.windowProc(message, wParam, lParam);
     } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
         createErrorDialog(error);
+
+        assumeWontThrow(writeln(error));
     }
 
     return DefWindowProcW(hWnd, message, wParam, lParam);
@@ -69,8 +77,6 @@ struct ConfigWindow {
 
     /// Constructor for ConfigWindow, takes HINSTANCE from WinMain.
     this(HINSTANCE hInstance, string className) {
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR)&this);
-
         this.className = className;
 
         // dfmt off
@@ -93,6 +99,8 @@ struct ConfigWindow {
         this.hWnd = CreateWindowW(this.className.toUTF16z, this.wndName.toUTF16z,
                 WS_OVERLAPPEDWINDOW, 0, 0, this.wndWidth, this.wndHeight, null,
                 null, hInstance, null);
+
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR)&this);
 
         if (!centerWindow(this.hWnd))
             this.success = false;
@@ -119,6 +127,8 @@ struct ConfigWindow {
 
     /// This window's procedure callback.
     void windowProc(uint message, WPARAM wParam, LPARAM lParam) {
+        writeln("HWND ", hWnd," :: windowProc(", message, ", ", wParam, ", ", lParam, ")");
+        
         switch (message) {
         case WM_CREATE:
             this.drawWindow();
