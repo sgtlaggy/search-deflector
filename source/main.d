@@ -41,7 +41,12 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
 
 /// Global static window procedure to call the non-static methods in ConfigWindow instances.
 extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) nothrow {
-    
+    if (message == WM_NCCREATE) {
+        assumeWontThrow(writeln("HWND ", hWnd," :: WM_NCCREATE"));
+
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR) lParam);
+    }
+
     try {
         ConfigWindow* window = cast(ConfigWindow*) GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
@@ -98,9 +103,7 @@ struct ConfigWindow {
 
         this.hWnd = CreateWindowW(this.className.toUTF16z, this.wndName.toUTF16z,
                 WS_OVERLAPPEDWINDOW, 0, 0, this.wndWidth, this.wndHeight, null,
-                null, hInstance, null);
-
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR)&this);
+                null, hInstance, cast(LPVOID) &this);
 
         if (!centerWindow(this.hWnd))
             this.success = false;
