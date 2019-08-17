@@ -15,6 +15,14 @@ int main(const string[] args) {
     return WinMain(hInstance, null, GetCommandLineA(), 0);
 }
 
+short S_LOWORD(long l) {
+    return cast(short) l;
+}
+
+short S_HIWORD(long l) {
+    return cast(short) (l >>> 16);
+}
+
 /// Entry point for SUBSYSTEM:WINDOWS
 extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @suppress(dscanner.style.phobos_naming_convention)
     ConfigWindow window;
@@ -55,7 +63,7 @@ extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam
         ConfigWindow* window = cast(ConfigWindow*) GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
         if (window)
-            window.windowProc(message, wParam, lParam);
+            return window.windowProc(message, wParam, lParam);
     } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
         createErrorDialog(error);
 
@@ -75,8 +83,8 @@ struct ConfigWindow {
 
     string className;
     string wndName = "Search Deflector";
-    int wndWidth = 500;
-    int wndHeight = 500;
+    int wndWidth = 550;
+    int wndHeight = 400;
     HWND[string] controls;
 
     MSG message;
@@ -98,7 +106,7 @@ struct ConfigWindow {
             hInstance: hInstance,
             hIcon: LoadIcon(NULL, IDI_APPLICATION),
             hCursor: LoadCursor(NULL, IDC_ARROW),
-            hbrBackground: GetSysColorBrush(COLOR_3DFACE),
+            hbrBackground: cast(HBRUSH) COLOR_WINDOWFRAME,
             lpszMenuName: null,
             lpszClassName: this.className.toUTF16z
         };
@@ -139,19 +147,25 @@ struct ConfigWindow {
 
         switch (message) {
         case WM_CREATE:
-            return this.drawWindow();
-        case WM_MOVE:
-            RECT rect;
+            this.drawWindow();
 
-            GetWindowRect(hWnd, &rect);
-
-            SetWindowTextW(this.controls["hwndSta1"], rect.left.to!string.toUTF16z);
-
-            SetWindowTextW(this.controls["hwndSta2"], rect.top.to!string.toUTF16z);
-
+            return 0;
             goto default;
+        case WM_MOUSEMOVE:
+            SetWindowTextW(this.controls["hwndSta1"], S_LOWORD(lParam).to!string.toUTF16z);
+            SetWindowTextW(this.controls["hwndSta2"], S_HIWORD(lParam).to!string.toUTF16z);
+
+            return 0;
+        case WM_GETMINMAXINFO:
+            LPMINMAXINFO lpmmi = cast(LPMINMAXINFO) lParam;
+
+            lpmmi.ptMinTrackSize.x = 400;
+            lpmmi.ptMinTrackSize.y = 400;
+
+            return 0;
         case WM_DESTROY:
             PostQuitMessage(!this.success);
+            
             return 0;
         default:
             return DefWindowProcW(this.hWnd, message, wParam, lParam);
@@ -164,22 +178,22 @@ struct ConfigWindow {
 
         CreateWindowW("static".toUTF16z, "X: ".toUTF16z,
             WS_CHILD | WS_VISIBLE,
-            10, 10, 25, 25, 
+            10, 10, 25, 16, 
             hWnd, cast(HMENU) 1, null, null);
 
         this.controls["hwndSta1"] = CreateWindowW("static".toUTF16z, "150".toUTF16z,
             WS_CHILD | WS_VISIBLE,
-            30, 10, 55, 90, 
+            30, 10, 25, 16, 
             hWnd, cast(HMENU) 2, null, null);
 
         CreateWindowW("static".toUTF16z, "Y: ".toUTF16z,
             WS_CHILD | WS_VISIBLE,
-            70, 10, 85, 25, 
+            70, 10, 25, 16, 
             hWnd, cast(HMENU) 3, null, null);
 
         this.controls["hwndSta2"] = CreateWindowW("static".toUTF16z, "150".toUTF16z,
             WS_CHILD | WS_VISIBLE,
-            90, 10, 115, 90,
+            90, 10, 25, 16,
             hWnd, cast(HMENU) 4, null, null);
 
         return 0;      
