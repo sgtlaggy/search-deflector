@@ -41,10 +41,14 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
 
 /// Global static window procedure to call the non-static methods in ConfigWindow instances.
 extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) nothrow {
+    assumeWontThrow(writeln("globalWindowProc(", hWnd, ", ", message, ", ", wParam, ", ", lParam, ")"));
+    
     if (message == WM_NCCREATE) {
-        assumeWontThrow(writeln("HWND ", hWnd," :: WM_NCCREATE"));
+        CREATESTRUCT* cs = cast(CREATESTRUCT*) lParam;
+        ConfigWindow* window = cast(ConfigWindow*) cs.lpCreateParams;
 
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR) lParam);
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR) cs.lpCreateParams);
+        window.hWnd = hWnd;
     }
 
     try {
@@ -129,23 +133,32 @@ struct ConfigWindow {
     }
 
     /// This window's procedure callback.
-    void windowProc(uint message, WPARAM wParam, LPARAM lParam) {
-        writeln("HWND ", hWnd," :: windowProc(", message, ", ", wParam, ", ", lParam, ")");
-        
+    LRESULT windowProc(uint message, WPARAM wParam, LPARAM lParam) {
+        writeln("HWND ", this.hWnd, " :: windowProc(", message, ", ", wParam, ", ", lParam, ")");
+
         switch (message) {
         case WM_CREATE:
-            this.drawWindow();
+            return this.drawWindow();
             break;
         case WM_DESTROY:
             PostQuitMessage(!this.success);
+            return 0;
             break;
         default:
+            return DefWindowProcW(this.hWnd, message, wParam, lParam);
             break;
         }
     }
 
     /// Draw the window controls.
-    void drawWindow() {
+    bool drawWindow() {
+        writeln("HWND ", this.hWnd, " :: drawWindow()");
+
+        CreateWindowW("Static".toUTF16z, "This is some text".toUTF16z,
+                WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 20, this.wndWidth - 20,
+                this.wndHeight - 20, this.hWnd, cast(HMENU) 1, null, null);
+
+        return 0;      
     }
 }
 
