@@ -8,10 +8,18 @@ import std.windows.registry: RegistryException;
 import setup: getAvailableBrowsers;
 import common: parseConfig, mergeAAs, createErrorDialog, ENGINE_TEMPLATES, PROJECT_VERSION;
 
+int main(const string[] args) {
+    HINSTANCE hInstance = cast(HINSTANCE) GetModuleHandle(null);
+
+    writeln("Started!");
+
+    return WinMain(hInstance, null, GetCommandLineA(), 0);
+}
+
 /// Entry point for SUBSYSTEM:WINDOWS
 extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @suppress(dscanner.style.phobos_naming_convention)
     ConfigWindow window;
-    
+
     try {
         Runtime.initialize();
 
@@ -61,7 +69,7 @@ struct ConfigWindow {
 
     /// Constructor for ConfigWindow, takes HINSTANCE from WinMain.
     this(HINSTANCE hInstance, string className) {
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR) &this);
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, cast(LONG_PTR)&this);
 
         this.className = className;
 
@@ -94,7 +102,7 @@ struct ConfigWindow {
     void begin() {
         this.browsers = getAvailableBrowsers(false);
         this.engines = parseConfig(ENGINE_TEMPLATES);
-        
+
         try {
             this.browsers = mergeAAs(browsers, getAvailableBrowsers(true));
         } catch (RegistryException) {
@@ -110,7 +118,7 @@ struct ConfigWindow {
     }
 
     /// This window's procedure callback.
-    void windowProc(uint message, WPARAM wParam, LPARAM lParam) {        
+    void windowProc(uint message, WPARAM wParam, LPARAM lParam) {
         switch (message) {
         case WM_CREATE:
             this.drawWindow();

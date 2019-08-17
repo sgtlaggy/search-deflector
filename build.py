@@ -96,7 +96,7 @@ def compile_file(source, binary, debug=True):
     command = ["ldc2", source, "-i", "-I", dirname(source), "-J", VARS_PATH, "-of", binary, "-m32"]
 
     if debug:
-        command.append("-g")
+        command.extend(["-g", "-L/SUBSYSTEM:CONSOLE"])
     else:
         command.extend(["-O3", "-ffast-math", "-release"])
 
