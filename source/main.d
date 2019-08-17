@@ -22,18 +22,18 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
     try {
         Runtime.initialize();
 
-        writeln("Initialized D runtime.");
+        debug writeln("Initialized D runtime.");
 
         window = ConfigWindow(hInstance, "com.spikespaz.searchdeflector");
         window.begin();
 
         Runtime.terminate();
 
-        writeln("Terminated D runtime.");
+        debug writeln("Terminated D runtime.");
     } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
         createErrorDialog(error);
 
-        writeln(error);
+        debug writeln(error);
     }
 
     return !window.success;
@@ -41,7 +41,7 @@ extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) { // @s
 
 /// Global static window procedure to call the non-static methods in ConfigWindow instances.
 extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) nothrow {
-    assumeWontThrow(writeln("globalWindowProc(", hWnd, ", ", message, ", ", wParam, ", ", lParam, ")"));
+    debug assumeWontThrow(writeln("globalWindowProc(", hWnd, ", ", message, ", ", wParam, ", ", lParam, ")"));
     
     if (message == WM_NCCREATE) {
         CREATESTRUCT* cs = cast(CREATESTRUCT*) lParam;
@@ -59,7 +59,7 @@ extern (Windows) LRESULT globalWindowProc(HWND hWnd, UINT message, WPARAM wParam
     } catch (Throwable error) { // @suppress(dscanner.suspicious.catch_em_all)
         createErrorDialog(error);
 
-        assumeWontThrow(writeln(error));
+        debug assumeWontThrow(writeln(error));
     }
 
     return DefWindowProcW(hWnd, message, wParam, lParam);
@@ -77,6 +77,7 @@ struct ConfigWindow {
     string wndName = "Search Deflector";
     int wndWidth = 500;
     int wndHeight = 500;
+    HWND[string] controls;
 
     MSG message;
     HWND hWnd;
@@ -134,29 +135,52 @@ struct ConfigWindow {
 
     /// This window's procedure callback.
     LRESULT windowProc(uint message, WPARAM wParam, LPARAM lParam) {
-        writeln("HWND ", this.hWnd, " :: windowProc(", message, ", ", wParam, ", ", lParam, ")");
+        debug writeln("HWND ", this.hWnd, " :: windowProc(", message, ", ", wParam, ", ", lParam, ")");
 
         switch (message) {
         case WM_CREATE:
             return this.drawWindow();
-            break;
+        case WM_MOVE:
+            RECT rect;
+
+            GetWindowRect(hWnd, &rect);
+
+            SetWindowTextW(this.controls["hwndSta1"], rect.left.to!string.toUTF16z);
+
+            SetWindowTextW(this.controls["hwndSta2"], rect.top.to!string.toUTF16z);
+
+            goto default;
         case WM_DESTROY:
             PostQuitMessage(!this.success);
             return 0;
-            break;
         default:
             return DefWindowProcW(this.hWnd, message, wParam, lParam);
-            break;
         }
     }
 
     /// Draw the window controls.
     bool drawWindow() {
-        writeln("HWND ", this.hWnd, " :: drawWindow()");
+        debug writeln("HWND ", this.hWnd, " :: drawWindow()");
 
-        CreateWindowW("Static".toUTF16z, "This is some text".toUTF16z,
-                WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 20, this.wndWidth - 20,
-                this.wndHeight - 20, this.hWnd, cast(HMENU) 1, null, null);
+        CreateWindowW("static".toUTF16z, "X: ".toUTF16z,
+            WS_CHILD | WS_VISIBLE,
+            10, 10, 25, 25, 
+            hWnd, cast(HMENU) 1, null, null);
+
+        this.controls["hwndSta1"] = CreateWindowW("static".toUTF16z, "150".toUTF16z,
+            WS_CHILD | WS_VISIBLE,
+            30, 10, 55, 90, 
+            hWnd, cast(HMENU) 2, null, null);
+
+        CreateWindowW("static".toUTF16z, "Y: ".toUTF16z,
+            WS_CHILD | WS_VISIBLE,
+            70, 10, 85, 25, 
+            hWnd, cast(HMENU) 3, null, null);
+
+        this.controls["hwndSta2"] = CreateWindowW("static".toUTF16z, "150".toUTF16z,
+            WS_CHILD | WS_VISIBLE,
+            90, 10, 115, 90,
+            hWnd, cast(HMENU) 4, null, null);
 
         return 0;      
     }
